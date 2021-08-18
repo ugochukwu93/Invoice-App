@@ -1,6 +1,7 @@
 <template>
   <div @click="checkClick" ref="invoiceWrap" class="invoice-wrap flex flex-column">
       <form @submit.prevent="submitForm" class="invoice-content">
+          <Loading v-show="loading"/>
           <h1>New Invoice</h1>
           <!-- Bill Form -->
           <div class="bill-from flex flex-column">
@@ -106,11 +107,11 @@
           <!-- save/Exit -->
           <div class="save flex">
               <div class="left">
-                  <button @click="closeInvoice" class="red">Cancel</button>
+                  <button type="button" @click="closeInvoice" class="red">Cancel</button>
               </div>
               <div class="right flex">
-                  <button @click="saveDraft" class="dark-purple">Save Draft</button>
-                  <button @click="publishInvoice" class="purple">Create Invoice</button>
+                  <button type="submit" @click="saveDraft" class="dark-purple">Save Draft</button>
+                  <button type="submit" @click="publishInvoice" class="purple">Create Invoice</button>
               </div>
           </div>
       </form>
@@ -118,13 +119,18 @@
 </template>
 
 <script>
+import Loading from "../components/Loading.vue"
 import db from "../firebase/firebaseInit"
 import { mapMutations } from 'vuex';
 import { uid } from 'uid';
 export default {
     name: "invoiceModal",
+    components: {
+        Loading,
+    },
     data(){
         return{
+            loading: null,
             dateOptions:{year: "numeric", month: "short", day: "numeric"},
             billerStreetAddress: null,
             billerCity: null,
@@ -136,8 +142,8 @@ export default {
             clientCity: null,
             clientZipCode: null,
             clientZipCountry: null,
-            InvoiceDateUnix: null,
-            InvoiceDate: null,
+            invoiceDateUnix: null,
+            invoiceDate: null,
             paymentTerms: null,
             paymentDueDateUnix: null,
             paymentDueDate: null,
@@ -155,7 +161,13 @@ export default {
         this.invoiceDate = new Date(this.InvoiceDateUnix).toLocaleString("en-us", this.dateOptions); 
     },
     methods: {
-        ...mapMutations(["TOGGLE_INVOICE"]),
+        ...mapMutations(["TOGGLE_INVOICE", "TOGGLE_MODAL"]),
+
+        checkClick(e) {
+            if (e.target === this.$refs.invoiceWrap) {
+                this.TOGGLE_MODAL();
+            }
+        },
 
         closeInvoice() {
             this.TOGGLE_INVOICE();
@@ -189,11 +201,13 @@ export default {
                 alert("Please ensure you filled out work items!");
                 return
             }
+
+            this.loading = true
             this.calInvoiceTotal();
 
-            const database = db.collection("invoice").doc();
+            const dataBase = db.collection('invoice').doc();
 
-            await database.set({
+            await dataBase.set({
                 invoiceId: uid(6),
                 billerStreetAddress: this.billerStreetAddress,
                 billerCity: this.billerCity,
@@ -217,6 +231,10 @@ export default {
                 invoiceDraft: this.invoiceDraft,
                 invoicePaid: null,
             })
+            
+            this.loading = false;
+            
+            this.TOGGLE_INVOICE();
         },
         submitForm() {
             this.uploadInvoice();
